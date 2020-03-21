@@ -1,0 +1,227 @@
+
+Functions Tutorial
+	
+lua-users home
+	wiki
+
+Functions let you store a piece of code in a value, are useful to be able to run the same piece of code from multiple places, without having to duplicate it. Also they let you change the behavior of your program at runtime by giving different functions to different parts of your code.
+
+Defining functions
+
+Functions are created with the function keyword as follows:
+
+    function ( args ) body end 
+
+The following example shows a simple function that receives a single argument and returns twice its value:
+
+    > foo = function (n) return n*2 end
+    > = foo(7)
+    14
+
+The arguments (also known as parameters) are specified inside the ( ) part, and values are returned from the function using the return keyword. Without the return, the function would return no values.
+
+Functions are values
+
+Notice that in the above example, we didn't actually "name" the function, we just assigned it to a variable. This is because in Lua functions are regular values (like numbers, strings, tables, etc.), and you can do anything with them that you can do with any other value. This is very different from many other languages that you might know (like C), where functions have permanent names fixed at compile-time, and can't be manipulated like values.
+
+The function block is an expression (in the same sense that "1 + 2" is an expression) that evaluates to a new function value. A function value can be called by using the ( ) operator, which runs the code in the function. The ( ) pair goes after the function expression, and optionally contains a comma-separated list of arguments.
+
+This means that Lua functions are considered anonymous (no pre-set name), and first-class (not treated differently from other values).
+
+Another thing to remember is that like tables, functions are passed by reference. For example, when you assign a variable containing a function to another variable, you just create a new "handle" to the same function.
+
+Function arguments
+
+Functions can take 0 or more arguments. These are values given to the function when it's called, that the code stored in the function can use. Inside the function, the parameters look like variables, except they only exist inside the function.
+
+An example to demonstrate how arguments work and how to pass them to a function:
+
+    > f = function (op, a, b)
+    >>  if op == 'add' then
+    >>   return a + b
+    >>  elseif op == 'sub' then
+    >>   return a - b
+    >>  end
+    >>  error("invalid operation")
+    >> end
+    > g = function (value)
+    >>  print(value)
+    >> end
+    > = f('add', 1, 2) -- args are given inside (), separated by commas.
+    3
+    > = f('add', 1, 2, 123) -- extra args are ignored
+    3
+    > = f('add', 1) -- missing args aren't an error, instead they will be filled with nil, which might cause an error in the function's code
+    stdin:1: attempt to perform arithmetic on local 'b' (a nil value)
+    > = g() -- to call a function with no args, use ()
+    nil
+    > = g "example" -- the () can be omitted if you have one quoted string arg
+    example
+    > = g {} -- same with one table constructor
+    table: 0x820ee0
+
+Function return values
+
+Functions can also return values back to the code that called them using the return keyword. That value will become the value of the function call expression. A unique feature of Lua is the fact that functions can return any amount of values. In most languages, functions always return one value. To use this, put comma-separated values after the return keyword:
+
+    > f = function ()
+    >>  return "x", "y", "z" -- return 3 values
+    >> end
+    > a, b, c, d = f() -- assign the 3 values to 4 variables. the 4th variable will be filled with nil
+    > = a, b, c, d
+    x y z nil
+    > a, b = (f()) -- wrapping a function call in () discards multiple return values
+    > = a, b
+    x, nil
+    > = "w"..f() -- using a function call as a sub-expression discards multiple returns
+    wx
+    > print(f(), "w") -- same when used as the arg for another function call...
+    x w
+    > print("w", f()) -- ...except when it's the last arg
+    w x y z
+    > print("w", (f())) -- wrapping in () also works here like it does with =
+    w x
+    > t = {f()} -- multiple returns can be stored in a table
+    > = t[1], t[2], t[3]
+    x y z
+
+One thing to remember about the last example ( {f()} ) is that if the function returns nils, since nil in tables is considered "no value", , the # operator can't be reliably used to get the number of values because it's undefined if an array has "holes".
+
+If you're used to a language (like Python) that returns multiple values by storing them in a "tuple" type, that's not how Lua works. Lua functions actually return separate values, instead of a single container.
+
+Using functions as parameters and returns
+
+Taking functions as parameters or using them as return values is a useful feature, because it lets you plug in your own behavior into existing code. One good example is table.sort, which can optionally take a custom "less than" function:
+
+    > list = {{3}, {5}, {2}, {-1}}
+    > table.sort(list)
+    attempt to compare two table values
+    stack traceback:
+            [C]: in function 'sort'
+            stdin:1: in main chunk
+            [C]: in ?
+    > table.sort(list, function (a, b) return a[1] < b[1] end)
+    > for i,v in ipairs(list) do print(v[1]) end
+    -1
+    2
+    3
+    5
+
+Variable number of arguments
+
+A function can have ... at the end of its argument list this will capture any remaining args passed after the named ones. Then you can use ... inside the body of the function, and it will evaluate to the multiple values (with the same rules as functions calls with multiple returns).
+
+For example, a function that passes its extra args unchanged to another function:
+
+    > f = function (x, ...)
+    >>  x(...)
+    >> end
+    > f(print, "1 2 3")
+    1 2 3
+
+This is also an example of a function taking another function as an arg.
+
+To get a specific item from ..., use the select function, which takes a number and a variable number of args, and returns the args starting from that index. It can also take "#" as the index and return the amount of args:
+
+    > f=function(...) print(select("#", ...)) print(select(3, ...)) end
+    > f(1, 2, 3, 4, 5)
+    5
+    3 4 5
+
+... can also be packed into a table:
+
+    > f=function(...) tbl={...} print(tbl[2]) end
+    > f("a", "b", "c")
+    b
+
+A table with array items can also be "unpacked" to an arg list:
+
+    > f=function(...) tbl={...} print(table.unpack(tbl)) end -- it's just "unpack" (without the table.) in 5.1
+    > f("a", "b", "c")
+    a b c
+    > f("a", nil, "c") -- undefined result, may or may not be what you expect
+
+But in the second example we see a problem: tables can't store nil, which means that the # operator (which table.unpack uses internally) can't be used, since it's undefined if the array has nil "holes". Even looping over the table to find the item with the biggest key won't get the real length if nil was the last arg to the function.
+
+Lua 5.2 added a table.pack function to help solve this, which works like {...} except it also adds an "n" field containing the number of items:
+
+    > f=function(...) tbl=table.pack(...) print(tbl.n, table.unpack(tbl, 1, tbl.n)) end
+    > f("a", "b", "c")
+    3 a b c
+    > f("a", nil, "c")
+    3 a nil c
+
+Here we also used table.unpack's start and end index parameters, which it uses instead of starting at 1 and ending at #tbl if given.
+
+Syntax shortcut for "named" functions
+
+Although Lua lets us use functions freely like any other value, we will usually just want to give them a name (by storing them in a variable) and use them by that name. Lua has some syntax sugar to make storing a function in a variable look nicer:
+
+    function f(...)
+    end
+
+    -- is equivalent to:
+
+    f = function (...)
+    end
+
+This syntax could have been used in the examples in this tutorial, but the = makes it clearer that functions are values. Generally it is recommended to use the shortcut syntax in real scripts, unless there's no reason to give your function a name.
+
+Also there is a similar syntax for storing functions in tables:
+
+    function a.b.f(...)
+    end
+
+    -- is equivalent to:
+
+    a.b.f = function (...)
+    end
+
+Recursion and tail calls
+
+A recursive function is a function that calls itself. For example:
+
+    function factorial(x)
+      if x == 1 then
+        return 1
+      end
+      return x * factorial(x-1)
+    end
+
+There can also be mutually recursive functions, where for example a calls b which calls a again, over and over.
+
+The problem with these kinds of functions is that every time a function is called, Lua needs to remember where it was called from so it knows where to return to. This information is stored in a data structure called the call stack, and it grows each time a function is called, and shrinks when a function returns. So when you write a function that can call itself thousands of times deep, it can cause the stack to grow really large.
+
+A solution to this is tail calls: if a function returns the exact, unmodified results of another function call, Lua knows that it doesn't have to return back to your function, it can re-use the current stack slot, and have the function you called return directly to the function that called your current function.
+
+If the above is confusing, another way to think of it is that a tail call is just a jump, not an actual function call.
+
+Here is a tail-recursive example of the above function:
+
+    function factorial_helper(i, acc)
+      if i == 0 then
+        return acc
+      end
+      return factorial_helper(i-1, acc*i)
+    end
+
+    function factorial(x)
+      return factorial_helper(x, 1)
+    end
+
+Some examples of what is and what isn't a tail call:
+
+    return f(arg) -- tail call
+    return t.f(a+b, t.x) -- tail call
+    return 1, f() -- not a tail call, the function's results are not the only thing returned
+    return f(), 1 -- not a tail call, the function's results are not the only thing returned
+    return (f()) -- not a tail call, the function's possible multiple return values need to be cut down to 1 after it returns
+    return f() + 5 -- not a tail call, the function's return value needs to be added to 5 after it returns
+    return f().x -- not a tail call, the function's return value needs to be used in a table index expression after it returns
+
+Not all non-tail called recursive functions are bad, it's often the most natural solution if the calls won't get very deep. But if you are expecting hundreds of iterations or more, you should probably consider using tail recursion or just a loop.
+
+Finally, the only reason tail calls were introduced with recursion is because that's when they're most often useful. But it does not mean that tail calls only work when calling the same function, it still works the same way when you call a different function.
+RecentChanges · preferences
+edit · history
+Last edited January 6, 2015 2:18 am GMT (diff) 
