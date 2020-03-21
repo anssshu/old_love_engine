@@ -13,7 +13,7 @@ local settings = {
 }
 ]]
 
-if not love.filesystem.isFile( "f" ) then
+if not love.filesystem.getInfo( "f" ) then
     love.filesystem.write("f", "0.5 0")
 end
 

@@ -15,13 +15,13 @@ game can switch screen with game:switchTo(screen)
     _pause = false,
     audioLib = {
       -- delcare all the sound resources
-      jump = love.audio.newSource("assets/jump.mp3"),
+      jump = love.audio.newSource("assets/jump.mp3","static"),
     },
     ----------this is for playing background music --------------
     musicPlayer = {
       mute = false,
       volume = 1,
-      audio = love.audio.newSource("assets/bg.wav"),
+      audio = love.audio.newSource("assets/bg.wav","stream"),
       play = function(self)
         love.audio.play(self.audio)
         love.audio.setVolume(self.volume)
